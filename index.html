@@ -1,0 +1,288 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>태종: 피로 세운 길</title>
+<style>
+:root{--a1:#8E2323;--a2:#1F3A68;--tk:#5E5E6E;--bn:#3A2A12;--t1:#FBF1EE;--t2:#EEF2F9;--mu:#B23A3A;--my:#2F5DA8;--in:#2E8B57;--je:#B8860B}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,"Noto Sans KR",sans-serif;background:#efe7d6;color:#222;font-size:15px}
+header{position:sticky;top:0;z-index:5;background:#2b2118;color:#f3e6c4;padding:6px 8px;box-shadow:0 2px 6px #0006}
+.row{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.trk{background:#ffffff18;border-radius:6px;padding:2px 6px;font-size:13px;display:inline-flex;align-items:center;gap:3px}
+.trk b{font-size:15px}.trk.res{color:#fff}.pm{display:none;border:0;background:#fff3;color:#fff;border-radius:4px;width:20px;height:20px;padding:0;font-size:13px}
+body.edit .pm{display:inline-block}
+.danger b{color:#ff8a8a}
+main{padding:8px 8px 120px;max-width:760px;margin:auto}
+h3{margin:12px 0 6px;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.card{border:4px solid var(--c);background:var(--t);border-radius:10px;padding:6px;cursor:pointer;position:relative;min-height:92px}
+.card .ttl{background:var(--c);color:#fff;font-weight:700;border-radius:5px;padding:3px 5px;font-size:14px}
+.card small{color:#555;display:block;margin-top:3px;font-size:12px}
+.card.worse{box-shadow:0 0 0 3px #e0a000}.badge{position:absolute;top:-8px;right:-6px;background:#e0a000;color:#000;font-size:11px;border-radius:8px;padding:1px 5px;font-weight:700}
+.chip{display:inline-block;color:#fff;border-radius:4px;padding:0 5px;margin:1px;font-size:12px}
+.c무력{background:var(--mu)}.c명분{background:var(--my)}.c인맥{background:var(--in)}.c재정{background:var(--je)}.cany{background:#777}
+button{font:inherit}.btn{border:0;border-radius:8px;padding:9px 12px;background:#5a4630;color:#fff;margin:2px;font-weight:600}
+.btn:disabled{opacity:.4}.btn.alt{background:#8a7a60}.btn.pri{background:#8E2323}
+#bar{position:sticky;bottom:0;background:#2b2118ee;padding:6px;display:flex;flex-wrap:wrap;gap:2px;justify-content:center;z-index:5}
+#modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;justify-content:center;z-index:9}
+#modal.on{display:flex}#mbox{background:#fffaf0;width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:14px 14px 0 0;padding:12px}
+.opt{border:2px solid var(--c);border-radius:8px;padding:8px;margin:6px 0;background:var(--t)}
+.opt .btn{width:100%;background:var(--c)}
+#log{background:#fff8;border-radius:8px;padding:6px;font-size:12px;max-height:220px;overflow:auto;white-space:pre-wrap}
+.tech{background:#F3EBD7;border:1px solid #8A6D2B;border-radius:6px;padding:4px 6px;margin:3px 0;font-size:13px}
+.tech.used{opacity:.5}.flav{color:#555;font-style:italic;font-size:13px}.fail{color:#A01818;font-size:13px}
+.note{font-size:12px;color:#6b5a3a}
+.pc .on{font-size:12px;color:#123}.pc .off{font-size:12px;color:#999;text-decoration:line-through}
+.enter{animation:ent 1.2s ease-out}@keyframes ent{0%{transform:scale(.3) rotateY(90deg);opacity:0;box-shadow:0 0 30px #ffd700}60%{transform:scale(1.08);box-shadow:0 0 25px #ffd700}100%{transform:none}}
+input[type=range]{width:120px}
+</style></head><body>
+<header id="hdr"></header>
+<main>
+<div class="row" id="status"></div>
+<h3>사건 줄</h3><div class="cards" id="rowc"></div>
+<h3>악화 칸 <span class="note">(비용 +1 · 라운드 종료까지 미해결이면 버림: 민심−1 정통성−1)</span></h3><div class="cards" id="worsec"></div>
+<h3>인물 (<span id="chn">0</span>/10) <span class="note">세력 처음 3+에 등장 · 효과는 수치 충족 시만 (초안)</span></h3><div class="cards" id="chc"></div>
+<h3>기술 진열대 (<span id="tabn">0</span>)</h3><div id="tabc"></div>
+<h3>기록 <span class="note">새 게임 = 새 순서 (덱은 매번 crypto 난수로 섞임)</span></h3><div id="log"></div>
+</main>
+<div id="bar"></div>
+<div id="modal"><div id="mbox"></div></div>
+<script>
+const FC={공신:"#9C4A1A",외척:"#7A2E6E",종친:"#2E6B3A",사대부:"#2D4F7C"};const R=["무력","명분","인맥","재정"],F=["공신","외척","종친","사대부"];
+const COL={"1막":["#8E2323","#FBF1EE"],"2막":["#1F3A68","#EEF2F9"],"토큰":["#5E5E6E","#F2F2F4"],"보너스":["#3A2A12","#F7F1E3"]};
+// effects: [key,delta]; special strings: TOKEN:T1, ACTM, PYE (방치), DICE
+const C={
+"1":{d:"1막",k:"실제",y:"1398",t:"제1차 왕자의 난",f:"정도전이 칼을 겨누기 전에, 정안군이 먼저 움직였다.",cost:{무력:4,인맥:2},o:[["기습",null,"정통성 -2, 공신 +2",[["정통성",-2],["공신",2]]],["신중한 거병",null,"명분 +2 획득, 정통성 -1",[["명분",2],["정통성",-1]]]],tech:["정안군의 사병","사건 해결 시 무력 비용 -1"]},
+"2":{d:"1막",k:"실제",y:"1398",t:"정종 옹립",f:"스스로 왕이 되지 않고, 형을 먼저 세운다.",cost:{명분:3},o:[["옹립",null,"정통성 +2, 종친 +1",[["정통성",2],["종친",1]]]],tech:["물러서는 지혜","1회: 실패할 사건 1장을 패널티 없이 악화 칸에 1라운드 더 둠"]},
+"3":{d:"1막",k:"실제",y:"1400",t:"제2차 왕자의 난",f:"형 방간의 군사가 개경 거리를 메웠다.",tags:"종친",cost:{무력:3,인맥:1},o:[["유배",null,"종친 -1, 민심 +1",[["종친",-1],["민심",1]]],["처형",null,"종친 -3, 정통성 -1",[["종친",-3],["정통성",-1]]]],tech:["형제의 칼","「종친」 사건 비용 -1"]},
+"4":{d:"1막",k:"실제",y:"1400",t:"사병 혁파",f:"공신과 왕족의 사병을 거두어 나라의 군대로 삼다.",cost:{명분:2,인맥:3},o:[["혁파",null,"공신 -2, 종친 -1",[["공신",-2],["종친",-1]]]],tech:["국가의 군대","매 라운드 무력 +1, 반란 피해 -1"]},
+"5":{d:"1막",k:"실제",y:"1400",t:"즉위",f:"정종의 선위를 받아 조선 제3대 국왕에 오르다.",tags:"1막 마지막",cond:"정통성 4 이상",cost:{무력:2,명분:2},o:[["즉위",null,"해결 즉시 1막 종료 → 다음 라운드부터 2막",[]]],fail:"버려지지 않음. 4라운드 이후 미해결로 라운드 종료 시 정통성 -1",tech:["왕의 권위","행동 +1 (매 라운드)"]},
+"V1":{d:"1막",k:"가상",t:"정도전 잔당의 밀서",f:"숨어든 잔당이 아직 도성 안에 있다.",cost:{인맥:2,무력:1},o:[["색출",null,"공신 +1, 민심 -1",[["공신",1],["민심",-1]]],["무시",{},"비용 없음. 다음 라운드 「잔당의 습격」 토큰 사건 추가",[["TOKEN","T1"]]]],tech:["밀정의 귀","1회: 사건 덱 맨 위 카드 확인"]},
+"V2":{d:"1막",k:"가상",t:"흔들리는 공신",f:"공을 세운 자들은 언제나 더 많은 것을 원한다.",cost:null,o:[["포상",{재정:2},"공신 +2",[["공신",2]]],["위협",{무력:2},"공신 -1, 정통성 -1",[["공신",-1],["정통성",-1]]]],tech:["논공행상","공신 반란 첫 발생을 1라운드 늦춤"]},
+"V3":{d:"1막",k:"가상",t:"정종의 망설임",f:"왕위는 내주고 싶으나, 아직 때가 아니라 한다.",cost:{명분:2,인맥:1},o:[["설득",null,"정통성 +1",[["정통성",1]]]],fail:"실패 시 추가: 「즉위」 정통성 조건 +1"},
+"V4":{d:"1막",k:"가상",t:"사병 장수의 저항",f:"칼을 내려놓으라는 명에 장수들이 고개를 젓는다.",tags:"지방 반란",cond:"「사병 혁파」 해결 후에만 해결 가능",cost:{무력:3},o:[["회유",null,"인맥 +2 획득, 공신 -1",[["인맥",2],["공신",-1]]],["진압",null,"민심 -1, 무력 +1 획득",[["민심",-1],["무력",1]]]]},
+"T1":{d:"토큰",k:"가상",t:"잔당의 습격",f:"밀서를 무시한 대가가 밤길에 찾아왔다.",tags:"지방 반란 · 토큰",cond:"「정도전 잔당의 밀서」 무시 시 추가",cost:{무력:3},o:[["격퇴",null,"공신 +1 (해결 후 카드 제거)",[["공신",1]]]]},
+"6":{d:"2막",k:"실제·전승",y:"1401~02",t:"함흥차사",f:"함흥으로 간 차사는 돌아오지 않았다. (전승)",tags:"종친",cost:{인맥:2,명분:2},o:[["귀환 설득",null,"정통성 +3",[["정통성",3]]]],fail:"놓여 있는 동안 매 라운드 종료 시 정통성 -1",tech:["아버지의 귀환","1회: 정통성이 1 아래로 떨어지지 않음"]},
+"7":{d:"2막",k:"실제",y:"1402",t:"조사의의 난",f:"태상왕을 따르는 동북면의 군사가 일어섰다.",tags:"지방 반란",cost:{무력:4},o:[["진압",null,"정통성 +1, 민심 -1",[["정통성",1],["민심",-1]]]],tech:["동북면 평정","「지방 반란」 사건 비용 -1"]},
+"8":{d:"2막",k:"실제",y:"1401",t:"신문고 설치",f:"억울한 백성은 북을 쳐서 왕에게 알리라.",cost:{재정:2,명분:1},o:[["설치",null,"민심 +2",[["민심",2]]]],tech:["백성의 목소리","공개 전 다음 사건 1장 미리 봄 (매 라운드)"]},
+"9":{d:"2막",k:"실제",y:"1403",t:"명의 책봉",f:"명 황제의 고명과 인신이 도착하다.",tags:"외교",cost:{재정:3,명분:2},o:[["책봉 수락",null,"정통성 +3",[["정통성",3]]]],tech:["사대의 명분","「외교」 사건 비용 -1"]},
+"10":{d:"2막",k:"실제",y:"1406",t:"사찰 정리",f:"사찰의 토지와 노비를 국가로 거두다.",cost:{명분:2,인맥:1},o:[["정리",null,"사대부 +1, 민심 -1",[["사대부",1],["민심",-1]]]],tech:["거둔 토지","매 라운드 재정 +1"]},
+"11":{d:"2막",k:"실제",y:"1406~10",t:"선위 파동과 민씨 형제",f:"왕이 물러나겠다 하자, 기뻐한 자들이 있었다.",tags:"외척",cost:{인맥:3,명분:2},o:[["처단",null,"외척 -4, 민심 -1, 후계 +2",[["외척",-4],["민심",-1],["후계",2]]],["봐주기",null,"외척 +1, 「외척의 반란」 토큰 사건 추가",[["외척",1],["TOKEN","T2"]]]],tech:["시험하는 왕","막마다 1회: 세력 트랙 1개를 1칸 조정"]},
+"12":{d:"2막",k:"실제",y:"1413",t:"호패법",f:"열여섯 이상 남자는 모두 호패를 차라.",cost:{재정:2,인맥:2},o:[["시행",null,"민심 -1",[["민심",-1]]]],tech:["장부의 나라","매 라운드 재정 +1, 무력 +1"]},
+"13":{d:"2막",k:"실제",y:"1414",t:"6조 직계제",f:"의정부를 거치지 않고, 6조가 왕에게 곧바로 아뢴다.",cost:{명분:3,인맥:2},o:[["시행",null,"공신 -1, 사대부 +1",[["공신",-1],["사대부",1]]]],tech:["왕에게 곧바로","1회: 한 라운드에 행동 1로 사건 2장 동시 해결"]},
+"14":{d:"2막",k:"실제",y:"1418",t:"양녕대군 폐세자",f:"세자를 폐하고, 셋째 충녕을 세운다.",tags:"종친 · 2막 마지막",cond:"정통성 5 이상",cost:{명분:3},o:[["충녕 책봉",null,"후계 +5",[["후계",5]]],["양녕 유지",null,"후계 +1, 종친 +2",[["후계",1],["종친",2]]]],fail:"버려지지 않음. 12라운드 종료까지 미해결 시 후계 -3"},
+"15":{d:"보너스",k:"실제",y:"1418",t:"심온 사사",f:"상왕은 새 왕의 장인마저 남겨두지 않았다. (상왕 단계)",tags:"게임 종료 후",cond:"게임 종료 시 외척 3 이상이면 선택 가능",cost:{},o:[["사사",null,"외척 0으로, 민심 -2 (점수 계산 전 적용)",[]],["두기",null,"변화 없음",[]]]},
+"V5":{d:"2막",k:"가상",t:"가뭄과 흉년",f:"하늘이 비를 내리지 않으니, 왕의 덕을 묻는다.",cost:null,o:[["구휼",{재정:3},"민심 +2",[["민심",2]]],["근신",{명분:2},"정통성 +1, 민심 +1",[["정통성",1],["민심",1]]]],fail:"실패 시 추가: 민심 -2"},
+"V6":{d:"2막",k:"가상",t:"왜구의 침입",f:"남쪽 바다에서 또 배들이 몰려온다.",tags:"왜구",cost:{무력:3},o:[["격퇴",null,"민심 +1",[["민심",1]]]],tech:["수군 강화","「왜구」 사건 비용 -1"],n:2},
+"V7":{d:"2막",k:"가상",t:"여진의 국경 소요",f:"두만강 너머 부족들이 국경을 넘나든다.",tags:"지방 반란",cost:null,o:[["토벌",{무력:2,재정:1},"민심 -1, 무력 +1 획득",[["민심",-1],["무력",1]]],["회유",{재정:2,명분:1},"사대부 +1",[["사대부",1]]]]},
+"V8":{d:"2막",k:"가상",t:"명 사신의 무리한 요구",f:"사신은 금은과 공녀를 요구하였다.",tags:"외교",cost:null,o:[["들어줌",{재정:3},"민심 -2",[["민심",-2]]],["거절",{명분:3},"「명의 추궁」 토큰 사건 추가",[["TOKEN","T3"]]]]},
+"V9":{d:"2막",k:"가상",t:"대간의 상소 공세",f:"대간들이 날마다 궐문 앞에 엎드렸다.",cost:{명분:2},o:[["수용",null,"사대부 +2, 다음 라운드 행동 -1",[["사대부",2],["ACTM",1]]],["묵살",null,"사대부 -1, 정통성 -1",[["사대부",-1],["정통성",-1]]]],tech:["언로를 연 왕","1회: 사대부 트랙 감소 1번 무시 (초안)"]},
+"V10":{d:"2막",k:"가상",t:"세자의 비행",f:"세자가 또 궐 밖으로 나가 사냥과 유흥을 즐겼다.",tags:"종친",cost:{인맥:1,명분:1},o:[["훈계",null,"후계 +1",[["후계",1]]],["방치",{},"비용 없음. 「양녕대군 폐세자」 충녕 책봉 비용 -1, 종친 -1",[["PYE",1],["종친",-1]]]],n:3},
+"V11":{d:"2막",k:"가상",t:"외척의 매관매직",f:"민씨 집안 문 앞에 벼슬을 사려는 줄이 섰다.",tags:"외척",cond:"외척 3 이상일 때만 공개 (아니면 버리고 새로 공개)",cost:{인맥:2},o:[["처벌",null,"외척 -2, 사대부 +1",[["외척",-2],["사대부",1]]],["덮어줌",null,"외척 +1, 민심 -1",[["외척",1],["민심",-1]]]]},
+"V12":{d:"2막",k:"가상",t:"역모 고변",f:"누군가 밤중에 역모를 고하러 왔다.",cond:"선택 후 주사위(d6): 1-3 진짜 / 4-6 모함",cost:null,o:[["조사",{인맥:2},"진짜: 정통성 +2 / 모함: 사대부 +1",[["DICE",[[["정통성",2]],[["사대부",1]]]]]],["처단",{무력:2},"진짜: 정통성 +1 / 모함: 민심 -2, 정통성 -1",[["DICE",[[["정통성",1]],[["민심",-2],["정통성",-1]]]]]]],tech:["의금부 정비","1회: 역모 고변 주사위 다시 굴림 (초안)"]},
+"T2":{d:"토큰",k:"가상",t:"외척의 반란",f:"봐준 처남들이 칼을 들었다.",tags:"외척 · 토큰",cond:"「선위 파동」 봐주기 시 추가",cost:{무력:3,인맥:1},o:[["진압",null,"외척 -2 (해결 후 카드 제거)",[["외척",-2]]]],fail:"실패 시 추가: 정통성 -1"},
+"T3":{d:"토큰",k:"가상",t:"명의 추궁",f:"거절당한 사신이 황제에게 고하였다.",tags:"외교 · 토큰",cond:"「명 사신의 무리한 요구」 거절 시 추가",cost:{재정:2,명분:2},o:[["해명",null,"정통성 +1 (해결 후 카드 제거)",[["정통성",1]]]],fail:"실패 시 추가: 정통성 -1"}};
+const CH=[
+{id:"P1",f:"공신",t:"하륜",fl:"태종 즉위를 설계한 책사, 여러 차례 영의정을 지냈다.",e3:"「명의 책봉」·「6조 직계제」 명분 -1",e5:"이 두 사건 해결 시 정통성 +1",cards:["9","13"],red:["명분"],bon:[["정통성",1]]},
+{id:"P2",f:"공신",t:"조준",fl:"전제 개혁을 이끈 개국공신, 태종 초 영의정.",e3:"「사찰 정리」·「호패법」 재정/인맥 -1 (비용에 있는 것 중 하나)",e5:"이 두 사건 해결 시 재정 +1",cards:["10","12"],red:["재정","인맥"],bon:[["재정",1]]},
+{id:"P3",f:"공신",t:"이숙번",fl:"왕자의 난에서 군사를 이끈 무장, 훗날 교만으로 유배됐다.",e3:"제1·2차 왕자의 난·조사의의 난·잔당의 습격 무력 -1",e5:"이 사건들 해결 시 무력 +1 / 공신 6이면 라운드마다 정통성 -1 추가",cards:["1","3","7","T1"],red:["무력"],bon:[["무력",1]]},
+{id:"P4",f:"외척",t:"민제",fl:"원경왕후의 아버지, 여흥부원군.",e3:"「정종 옹립」·「즉위」 인맥/명분 -1",e5:"「선위 파동과 민씨 형제」 비용 +1",cards:["2","5"],red:["인맥","명분"]},
+{id:"P5",f:"외척",t:"민무구",fl:"왕비의 동생, 왕자의 난 공신이었으나 1410년 사사됐다.",e3:"「제1차 왕자의 난」 무력 -1",e5:"「외척의 매관매직」 비용 +1, 「선위 파동」 처단 시 후계 +1 추가",cards:["1"],red:["무력"]},
+{id:"P6",f:"종친",t:"이화 (의안대군)",fl:"태조의 이복동생, 왕자의 난에서 이방원 편에 섰다.",e3:"제1·2차 왕자의 난 인맥 -1",e5:"「함흥차사」 해결 시 정통성 +1",cards:["1","3"],red:["인맥"]},
+{id:"P7",f:"종친",t:"양녕대군",fl:"맏아들로 세자가 됐으나 1418년 폐위됐다.",e3:"「세자의 비행」 비용 -1",e5:"폐세자 '양녕 유지' 시 후계 +2",cards:["V10"],red:["*"]},
+{id:"P8",f:"종친",t:"충녕대군",fl:"셋째 아들, 공부에 힘쓴 훗날의 세종.",e3:"「양녕대군 폐세자」 명분 -1",e5:"'충녕 책봉' 시 후계 +2",cards:["14"],red:["명분"]},
+{id:"P9",f:"사대부",t:"권근",fl:"성리학자, 명과의 외교 문서 문제를 풀어낸 문장가.",e3:"「명의 책봉」·「명 사신의 무리한 요구」·「명의 추궁」 명분 -1",e5:"매 라운드 명분 +1",cards:["9","V8","T3"],red:["명분"]},
+{id:"P10",f:"사대부",t:"황희",fl:"태종이 아낀 관료, 양녕 폐위에 반대하다 유배됐다.",e3:"「신문고 설치」·「가뭄과 흉년」 재정 -1",e5:"이 두 사건 해결 시 민심 +1 / 폐세자 '충녕 책봉' 시 사대부 -1",cards:["8","V5"],red:["재정"],bon:[["민심",1]]}];
+const chOn=(id,l)=>{const c=CH.find(x=>x.id==id);return S.chars.includes(id)&&S.fac[c.f]>=l};
+const ONCE={"물러서는 지혜":1,"밀정의 귀":1,"아버지의 귀환":1,"왕에게 곧바로":1,"언로를 연 왕":1,"의금부 정비":1,"시험하는 왕":1,"논공행상":1};
+const AUTO={"정안군의 사병":"자동","형제의 칼":"자동","국가의 군대":"자동","왕의 권위":"자동","논공행상":"자동","아버지의 귀환":"자동","동북면 평정":"자동","백성의 목소리":"자동","사대의 명분":"자동","거둔 토지":"자동","장부의 나라":"자동","수군 강화":"자동","언로를 연 왕":"자동"};
+const base=id=>id.split("#")[0];
+function rnd(n){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+let S,U=[];let uidc=0;
+/* ---------- AUDIO ---------- */
+const AU={cfg:Object.assign({bgmV:.4,sfxV:.7,bgmM:false,sfxM:false},JSON.parse(localStorage.getItem("tj_audio")||"{}")),unlocked:false,cur:null,
+ b:{1:new Audio("bgm/act1_taiko.mp3"),2:new Audio("bgm/act2_court.mp3")},
+ save(){localStorage.setItem("tj_audio",JSON.stringify(this.cfg))},
+ sfx(n){if(this.cfg.sfxM||!this.unlocked)return;const a=new Audio("sfx/"+n+".mp3");a.volume=this.cfg.sfxV;a.play().catch(()=>{})},
+ vol(){return this.cfg.bgmM?0:this.cfg.bgmV},
+ bgm(act){if(!this.unlocked)return;const nx=this.b[act];if(this.cur===nx){nx.volume=this.vol();return}
+  const old=this.cur;this.cur=nx;nx.loop=true;nx.volume=0;nx.play().catch(()=>{});let k=0;
+  const iv=setInterval(()=>{k++;const p=Math.min(1,k/30);nx.volume=this.vol()*p;if(old)old.volume=this.vol()*(1-p);if(p>=1){clearInterval(iv);if(old)old.pause()}},66)},
+ unlock(){if(this.unlocked)return;this.unlocked=true;this.bgm(S&&S.act==2?2:1)}};
+document.addEventListener("pointerdown",()=>AU.unlock(),{once:false});
+/* ---------- STATE ---------- */
+function inst(id){return {u:++uidc,id}}
+function newGame(){
+ const d1=shuffle(["1","2","3","4","V1","V2","V3","V4"]).concat(["5"]);
+ const virt=shuffle(["V5","V6#a","V6#b","V7","V8","V9","V10#a","V10#b","V10#c","V11","V12"]).slice(0,7);
+ const d2=shuffle(["6","7","8","9","10","11","12","13"].concat(virt)).concat(["14"]);
+ S={res:{무력:2,명분:2,인맥:2,재정:2},민심:5,정통성:5,fac:{공신:2,외척:2,종친:2,사대부:2},후계:0,round:0,act:1,actLeft:0,
+  deck1:d1,deck2:d2,row:[],worse:[],tab:[],tokNext:[],used:{},v3fail:0,pye:0,actMinus:0,pendingAct2:false,nongDelay:false,free:0,over:null,log:[],uid:0,chars:[],newChars:[]};
+ U=[];log("새 게임 시작 — 새로 섞음. 1막 덱 순서(즉위 맨 아래), 2막 덱 16장(가상 7장 무작위, 폐세자 맨 아래).");
+ startRound();
+}
+function log(s){S.log.unshift(`[R${S.round||1}] `+s)}
+function snap(){U.push(JSON.stringify(S));if(U.length>60)U.shift()}
+function undo(){if(!U.length)return;S=JSON.parse(U.pop());AU.sfx("click");save();render()}
+function save(){S.uid=uidc;localStorage.setItem("tj_save",JSON.stringify(S))}
+function has(n){return S.tab.some(id=>C[base(id)].tech&&C[base(id)].tech[0]==n)}
+function avail(n){return has(n)&&!S.used[n]}
+function clamp(){for(const f of F)S.fac[f]=Math.max(0,Math.min(6,S.fac[f]));S.민심=Math.max(0,Math.min(10,S.민심));
+ if(S.정통성<1&&avail("아버지의 귀환")){S.정통성=1;S.used["아버지의 귀환"]=1;log("아버지의 귀환: 정통성 1에서 멈춤")}
+ S.정통성=Math.max(0,Math.min(10,S.정통성));S.후계=Math.max(0,Math.min(20,S.후계));for(const r of R)S.res[r]=Math.max(0,S.res[r]);
+ if(!S.chars)S.chars=[];for(const c of CH)if(!S.chars.includes(c.id)&&S.fac[c.f]>=3){S.chars.push(c.id);S.newChars=(S.newChars||[]).concat(c.id);log(`인물 등장: ${c.t} (${c.f} 3+)`);AU.sfx("appear")}
+ if(!S.over&&(S.민심<=0||S.정통성<=0)){S.over={lose:true};log("패배: 왕조의 몰락");AU.sfx("lose")}}
+function add(k,v){if(R.includes(k))S.res[k]+=v;else if(F.includes(k)){if(k=="사대부"&&v<0&&avail("언로를 연 왕")){S.used["언로를 연 왕"]=1;log("언로를 연 왕: 사대부 감소 무시");return}S.fac[k]+=v}else S[k]+=v}
+function draw(){const dk=S.act==1?S.deck1:S.deck2;while(dk.length){const id=dk.shift();if(base(id)=="V11"&&S.fac.외척<3){log("「외척의 매관매직」 조건 미충족 → 버리고 새로 공개");continue}return id}return null}
+function startRound(){
+ S.round++;if(S.pendingAct2){S.act=2;S.pendingAct2=false;S.used["시험하는 왕"]=0;log("━ 2막 시작 ━");AU.sfx("act");AU.bgm(2)}else AU.sfx("round");
+ S.res.재정++;let inc=[];
+ const FI={공신:"무력",사대부:"명분",종친:"인맥",외척:"재정"};for(const f of F)if(S.fac[f]>=3){S.res[FI[f]]++;inc.push(FI[f])}
+ for(const f of["공신","외척"])if(S.fac[f]>=6){if(f=="공신"&&has("논공행상")&&!S.nongDelay){S.nongDelay=true;log("논공행상: 공신 반란 1라운드 늦춤");continue}
+  const dmg=has("국가의 군대")?0:1;S.정통성-=dmg;log(`${f} 반란! 정통성 -${dmg}`);AU.sfx("penalty")}
+ if(has("국가의 군대"))S.res.무력++;if(has("거둔 토지"))S.res.재정++;if(has("장부의 나라")){S.res.재정++;S.res.무력++}
+ if(chOn("P9",5)){S.res.명분++;log("권근(사대부5+): 명분 +1")}
+ if(chOn("P3",5)&&S.fac.공신>=6){S.정통성--;log("이숙번(공신6): 정통성 -1 추가");AU.sfx("penalty")}
+ log(`라운드 ${S.round} 시작: 재정+1`+(inc.length?`, 세력 수입 ${inc.join("·")}`:""));
+ for(const c of S.row){S.worse.push(c);log(`악화: ${C[base(c.id)].t}`);AU.sfx("penalty")}S.row=[];
+ const n=S.round==1?3:2;for(let i=0;i<n;i++){const id=draw();if(id){S.row.push(inst(id));log("공개: "+C[base(id)].t)}}
+ for(const t of S.tokNext){S.row.push(inst(t));log("토큰 공개: "+C[t].t)}S.tokNext=[];
+ S.actLeft=(S.act==1?2:2+(has("왕의 권위")?1:0))-S.actMinus;S.actMinus=0;S.actLeft=Math.max(0,S.actLeft);
+ AU.sfx("reveal");clamp();save();render();
+}
+function endRound(){snap();
+ const all=S.row.concat(S.worse);
+ if(all.some(c=>c.id=="6")){S.정통성--;log("함흥차사: 정통성 -1")}
+ if(S.round>=4&&all.some(c=>c.id=="5")){S.정통성--;log("즉위 미해결: 정통성 -1")}
+ const keep=[];for(const c of S.worse){const b=base(c.id);
+  if(b=="5"||b=="14"){keep.push(c);continue}
+  if(c.hold){c.hold=false;keep.push(c);log("물러서는 지혜: "+C[b].t+" 1라운드 더 보류");continue}
+  S.민심--;S.정통성--;let x="";if(b=="V3"){S.v3fail++;x=" + 즉위 조건 +1"}if(b=="V5"){S.민심-=2;x=" + 민심 -2"}if(b=="T2"||b=="T3"){S.정통성--;x=" + 정통성 -1"}
+  log(`실패/버림: ${C[b].t} → 민심 -1, 정통성 -1${x}`);AU.sfx("penalty")}
+ S.worse=keep;clamp();
+ if(S.over){save();render();return}
+ if(S.round>=12){finish();return}
+ startRound();
+}
+function finish(){
+ if(S.row.concat(S.worse).some(c=>c.id=="14")){S.후계-=3;log("폐세자 미해결: 후계 -3")}clamp();
+ S.over={end:true,stage:S.fac.외척>=3?"simon":"score"};save();render();
+}
+function simon(yes){snap();if(yes){S.fac.외척=0;S.민심-=2;log("심온 사사: 외척 0, 민심 -2");AU.sfx("harsh")}else log("심온 사사: 두기");clamp();if(!S.over.lose)S.over.stage="score";save();render()}
+function score(){const bal=F.filter(f=>S.fac[f]>=2&&S.fac[f]<=4).length;const b=bal+(bal==4?2:0);
+ const tot=S.후계+S.민심+S.정통성+S.tab.length+b;const g=tot>=35?"성군의 시대":tot>=25?"안정된 계승":tot>=15?"불안한 계승":"왕조의 위기";return{tot,b,g}}
+/* ---------- COST ---------- */
+function effCost(c,oi){const d=C[base(c.id)],o=d.o[oi];let k=Object.assign({},o[1]!=null?o[1]:d.cost||{});
+ const notes=[];if(has("정안군의 사병")&&k.무력){k.무력--;notes.push("정안군의 사병 무력-1")}
+ const tg=d.tags||"";const gen=[];if(tg.includes("종친")&&has("형제의 칼"))gen.push("형제의 칼");if(tg.includes("지방 반란")&&has("동북면 평정"))gen.push("동북면 평정");
+ if(tg.includes("외교")&&has("사대의 명분"))gen.push("사대의 명분");if(tg.includes("왜구")&&has("수군 강화"))gen.push("수군 강화");
+ for(const g of gen){const r=R.filter(r=>k[r]>0).sort((a,b)=>k[b]-k[a])[0];if(r){k[r]--;notes.push(g+" "+r+"-1")}}
+ if(base(c.id)=="14"&&oi==0&&S.pye){const m=Math.min(S.pye,k.명분||0);k.명분-=m;if(m)notes.push(`세자 방치 명분-${m}`)}
+ const bid=base(c.id);for(const ch of CH){if(!chOn(ch.id,3)||!ch.cards.includes(bid))continue;
+  if(ch.id=="P8"&&oi!=0)continue;
+  const r=ch.red[0]=="*"?R.filter(r=>k[r]>0).sort((a,b)=>k[b]-k[a])[0]:ch.red.find(r=>k[r]>0);if(r){k[r]--;notes.push(`${ch.t} ${r}-1`)}}
+ let extra=S.worse.some(w=>w.u==c.u)?1:0;
+ if(bid=="11"&&chOn("P4",5)){extra++;notes.push("민제(외척5+) +1")}if(bid=="V11"&&chOn("P5",5)){extra++;notes.push("민무구(외척5+) +1")}
+ return{k,extra,notes}}
+function canPay(e,ex){const r=Object.assign({},S.res);for(const x in e.k)r[x]-=e.k[x];if(R.some(x=>r[x]<0))return false;if(e.extra){if(!ex||r[ex]<e.extra)return false}return true}
+function condOK(c){const b=base(c.id);if(b=="5")return S.정통성>=4+S.v3fail;if(b=="14")return S.정통성>=5;if(b=="V4")return S.tab.includes("4");return true}
+function condText(c){const b=base(c.id);if(b=="5")return `정통성 ${4+S.v3fail} 이상 필요`;if(b=="14")return "정통성 5 이상 필요";if(b=="V4")return "「사병 혁파」 해결 필요";return ""}
+const HARSH=["색출","처단","처형","진압","기습","위협","토벌","처벌"],LOW=["무시","방치","봐주기","덮어줌","두기","묵살"];
+function resolve(u,oi,ex){const c=S.row.concat(S.worse).find(x=>x.u==u);if(!c||S.over)return;const e=effCost(c,oi);
+ if(!canPay(e,ex)||!condOK(c)||(S.actLeft<1&&!S.free))return;snap();
+ for(const x in e.k)S.res[x]-=e.k[x];if(e.extra)S.res[ex]-=e.extra;
+ if(S.free)S.free--;else S.actLeft--;
+ const b=base(c.id),d=C[b],o=d.o[oi];S.row=S.row.filter(x=>x.u!=u);S.worse=S.worse.filter(x=>x.u!=u);
+ log(`해결: ${d.t} — ${o[0]} (${o[2]})`);
+ let dice=null;for(const [k,v] of o[3]){if(k=="TOKEN"){if(!S.tokNext.includes(v)&&!S.row.concat(S.worse).some(x=>x.id==v)){S.tokNext.push(v);log("토큰 사건 추가(다음 라운드): "+C[v].t)}}
+  else if(k=="ACTM")S.actMinus+=v;else if(k=="PYE")S.pye+=v;else if(k=="DICE")dice=v;else add(k,v)}
+ for(const ch of CH){if(!chOn(ch.id,5))continue;
+  if(ch.bon&&ch.cards.includes(b)){for(const [k,v] of ch.bon)add(k,v);log(`${ch.t}(5+): ${ch.bon.map(x=>x[0]+" +"+x[1]).join(", ")}`)}}
+ if(b=="6"&&chOn("P6",5)){add("정통성",1);log("이화(종친5+): 정통성 +1")}
+ if(b=="11"&&oi==0&&chOn("P5",5)){add("후계",1);log("민무구(외척5+): 후계 +1")}
+ if(b=="14"&&oi==1&&chOn("P7",5)){add("후계",2);log("양녕대군(종친5+): 후계 +2")}
+ if(b=="14"&&oi==0&&chOn("P8",5)){add("후계",2);log("충녕대군(종친5+): 후계 +2")}
+ if(b=="14"&&oi==0&&chOn("P10",5)){add("사대부",-1);log("황희(사대부5+): 사대부 -1")}
+ if(d.d!="토큰")S.tab.push(c.id);
+ if(b=="5"){S.pendingAct2=true;log("즉위! 다음 라운드부터 2막");AU.sfx("fanfare")}
+ else AU.sfx(HARSH.includes(o[0])?"harsh":LOW.includes(o[0])?"thud":"resolve");
+ if(dice){S.dice={eff:dice,roll:1+rnd(6),opt:o[0]};AU.sfx("dice")}
+ clamp();closeM();save();render();if(S.dice)showDice();}
+function showDice(){const D=S.dice,real=D.roll<=3;M(`<h3>역모 고변 — ${D.opt}</h3><p style="font-size:40px;text-align:center">🎲 ${D.roll}</p><p>${real?"진짜 역모!":"모함이었다."}</p>
+ <button class="btn pri" onclick="applyDice()">결과 적용</button>${avail("의금부 정비")?'<button class="btn alt" onclick="reroll()">의금부 정비: 다시 굴림</button>':""}`,true)}
+function reroll(){S.used["의금부 정비"]=1;S.dice.roll=1+rnd(6);log("의금부 정비: 다시 굴림");AU.sfx("dice");showDice()}
+function applyDice(){snap();const D=S.dice;const r=D.roll<=3;log(`주사위 ${D.roll}: ${r?"진짜":"모함"}`);for(const [k,v] of D.eff[r?0:1])add(k,v);S.dice=null;clamp();closeM();save();render()}
+function jeongmu(r){if(S.actLeft<1||S.over)return;snap();S.actLeft--;S.res[r]++;log("정무: "+r+" +1");AU.sfx("click");closeM();save();render()}
+function trade(a,b){if(S.res[a]<2||a==b)return;snap();S.res[a]-=2;S.res[b]++;log(`교환: ${a} 2 → ${b} 1`);AU.sfx("click");save();render();openTrade()}
+function manual(k,v){snap();if(k=="round")S.round+=v;else if(k=="act")S.actLeft+=v;else add(k,v);if(k!="사대부")0;clamp();log(`수동 조정: ${k} ${v>0?"+":""}${v}`);save();render()}
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id);
+function M(h,lock){$("mbox").innerHTML=h+(lock?"":'<button class="btn alt" style="width:100%" onclick="closeM()">닫기</button>');$("modal").classList.add("on")}
+function closeM(){$("modal").classList.remove("on")}
+$("modal").onclick=e=>{if(e.target.id=="modal"&&!S.dice)closeM()};
+const chips=(k,ex)=>{const s=R.filter(r=>k[r]).map(r=>`<span class="chip c${r}">${r}${k[r]}</span>`).join("")+(ex?`<span class="chip cany">+${ex} 아무 자원</span>`:"");return s||'<span class="chip cany">없음</span>'};
+function trk(lbl,val,k,cls=""){return `<span class="trk ${cls}">${lbl} <b>${val}</b><button class="pm" onclick="manual('${k}',-1)">−</button><button class="pm" onclick="manual('${k}',1)">+</button></span>`}
+function cardHTML(c,w){const d=C[base(c.id)],[col,tint]=COL[d.d];const costs=d.cost?chips(d.cost):"선택지별";
+ return `<div class="card ${w?"worse":""}" style="--c:${col};--t:${tint}" onclick="openCard(${c.u})" data-id="${c.id}">${w?'<span class="badge">악화 +1</span>':""}${c.hold?'<span class="badge" style="top:12px">보류</span>':""}
+ <div class="ttl">${d.t}</div><small>${d.d} · ${d.k}${d.y?" "+d.y:""}</small><div>${costs}</div></div>`}
+function openCard(u){const c=S.row.concat(S.worse).find(x=>x.u==u);const d=C[base(c.id)],[col,tint]=COL[d.d];const w=S.worse.some(x=>x.u==u);
+ let h=`<div style="--c:${col};--t:${tint}"><div class="card" style="cursor:default"><div class="ttl">${d.t}</div><small>#${base(c.id)} · ${d.d} · ${d.k} ${d.y||""}</small>
+ <p class="flav">${d.f}</p>${d.tags?`<small>분류: ${d.tags}</small>`:""}${d.cond?`<p><b>조건:</b> ${d.cond}</p>`:""}
+ <p><b>비용:</b> ${d.cost?chips(d.cost):"선택지마다 다름"} ${w?"<b>(악화: +1 아무 자원)</b>":""}</p>${d.fail?`<p class="fail">${d.fail}</p>`:""}
+ ${d.tech?`<div class="tech"><b>기술 · ${d.tech[0]}</b><br>${d.tech[1]}</div>`:""}</div>`;
+ const ok=condOK(c);if(!ok)h+=`<p class="fail">조건 미충족: ${condText(c)}</p>`;
+ const act=S.actLeft>0||S.free>0;if(!act)h+=`<p class="fail">남은 행동이 없습니다.</p>`;
+ d.o.forEach((o,i)=>{const e=effCost(c,i);let exSel="";let ex=null;
+  if(e.extra){const r2=Object.assign({},S.res);for(const x in e.k)r2[x]-=e.k[x];ex=R.filter(r=>r2[r]>=e.extra).sort((a,b)=>r2[b]-r2[a])[0]||"무력";
+   exSel=`<div>추가 자원: <select id="ex${i}">${R.map(r=>`<option ${r==ex?"selected":""}>${r}</option>`).join("")}</select></div>`}
+  const pay=canPay(e,ex);
+  h+=`<div class="opt"><b>◆ ${o[0]}</b> — ${o[2]}<div>실제 비용: ${chips(e.k,e.extra)}</div>${e.notes.length?`<small>${e.notes.join(", ")}</small>`:""}${exSel}
+  <button class="btn" data-opt="${i}" ${(!pay||!ok||!act||S.over)?"disabled":""} onclick="resolve(${u},${i},${e.extra?`$('ex${i}').value`:"null"})">${pay?"이 선택지로 해결":"자원 부족"}</button></div>`});
+ if(w&&avail("물러서는 지혜")&&!["5","14"].includes(base(c.id))&&!c.hold)h+=`<button class="btn alt" onclick="hold(${u})">물러서는 지혜 사용 (1라운드 더 보류)</button>`;
+ M(h+"</div>");AU.sfx("click")}
+function hold(u){snap();const c=S.worse.find(x=>x.u==u);c.hold=true;S.used["물러서는 지혜"]=1;log("물러서는 지혜 사용: "+C[base(c.id)].t);save();closeM();render()}
+function openJM(){M(`<h3>정무 — 원하는 자원 1개 (행동 1)</h3>`+R.map(r=>`<button class="btn" style="background:var(--${{무력:"mu",명분:"my",인맥:"in",재정:"je"}[r]})" onclick="jeongmu('${r}')">${r} +1</button>`).join(""))}
+function openTrade(){let h="<h3>교환 (행동 아님): 같은 자원 2 → 다른 자원 1</h3>";for(const a of R){h+=`<div>${a}(${S.res[a]}) 2개 → `+R.filter(b=>b!=a).map(b=>`<button class="btn" ${S.res[a]<2?"disabled":""} onclick="trade('${a}','${b}')">${b}</button>`).join("")+"</div>"}M(h)}
+function useTech(n){snap();if(n=="밀정의 귀"){S.used[n]=1;const dk=S.act==1?S.deck1:S.deck2;log("밀정의 귀 사용");save();render();M(`<h3>밀정의 귀</h3><p>덱 맨 위: <b>${dk[0]?C[base(dk[0])].t:"(없음)"}</b></p>`)}
+ else if(n=="왕에게 곧바로"){S.used[n]=1;S.free++;log("왕에게 곧바로: 이번 해결 1회는 행동을 쓰지 않음 (행동 1로 2장)");save();render()}
+ else if(n=="시험하는 왕"){U.pop();M("<h3>시험하는 왕: 세력 1칸 조정</h3>"+F.map(f=>`<div>${f} ${S.fac[f]} <button class="btn" onclick="sikum('${f}',-1)">−1</button><button class="btn" onclick="sikum('${f}',1)">+1</button></div>`).join(""))}}
+function sikum(f,v){snap();S.used["시험하는 왕"]=1;S.fac[f]+=v;clamp();log(`시험하는 왕: ${f} ${v>0?"+":""}${v}`);save();closeM();render()}
+function openAudio(){const c=AU.cfg;M(`<h3>소리 설정</h3>
+<p>배경음악 <label><input type="checkbox" id="bm" ${c.bgmM?"checked":""}> 음소거</label><br><input type="range" id="bv" min="0" max="1" step="0.05" value="${c.bgmV}"></p>
+<p>효과음 <label><input type="checkbox" id="sm" ${c.sfxM?"checked":""}> 음소거</label><br><input type="range" id="sv" min="0" max="1" step="0.05" value="${c.sfxV}"></p>`);
+ const up=()=>{c.bgmM=$("bm").checked;c.bgmV=+$("bv").value;c.sfxM=$("sm").checked;c.sfxV=+$("sv").value;AU.save();if(AU.cur)AU.cur.volume=AU.vol()};
+ ["bm","bv","sm","sv"].forEach(i=>$(i).oninput=up);$("sv").onchange=()=>AU.sfx("click")}
+function openCredits(){M(`<h3>크레딧</h3><p><b>게임 디자인</b>: 《태종: 피로 세운 길》 프로토타입 v0.1</p>
+<p><b>1막 BGM</b>: "Taiko drums (seamless loop)" — jobro (OpenGameArt 제출: congusbongus). 라이선스 <a href="https://creativecommons.org/licenses/by/3.0/">CC-BY 3.0</a>. 출처 <a href="https://opengameart.org/content/taiko-drums-seamless-loop">opengameart.org/content/taiko-drums-seamless-loop</a> (원본 freesound.org/people/jobro/sounds/112248). 96kbps MP3로 재인코딩.</p>
+<p><b>2막 BGM</b>: "Asianoriental1" — Tozan. 라이선스 CC0. 출처 <a href="https://opengameart.org/content/asianoriental1">opengameart.org/content/asianoriental1</a>. 96kbps MP3로 재인코딩.</p>
+<p><b>인물 카드</b>: 10장, 수치는 초안.</p><p><b>효과음</b>: numpy로 직접 합성 (sfxgen.py).</p>`)}
+function openRules(){M(`<h3>규칙 요약</h3><ol style="font-size:13px"><li>수입: 재정 +1</li><li>세력 수입(3 이상): 공신→무력 · 사대부→명분 · 종친→인맥 · 외척→재정</li><li>반란: 공신/외척 6이면 정통성 -1</li><li>기술 효과(매 라운드)</li><li>악화: 지난 라운드 미해결 사건 → 악화 칸 (비용 +1)</li><li>공개: 2장(1라운드 3장) + 토큰</li><li>행동: 해결 또는 정무 (1막 2 / 즉위 후 3)</li><li>정리: 악화 칸 미해결 버림 → 민심 -1, 정통성 -1</li></ol>
+<p style="font-size:13px">교환(자유): 같은 자원 2 → 다른 자원 1. 패배: 민심 또는 정통성 0.<br>점수 = 후계 + 민심 + 정통성 + 진열대 카드 수 + 세력 균형(2~4 세력마다 +1, 넷 모두 +2 추가).<br>35+ 성군의 시대 · 25+ 안정된 계승 · 15+ 불안한 계승 · 그 미만 왕조의 위기.<br>즉위: 정통성 4↑, 버려지지 않음, 4라운드 이후 미해결 라운드 종료마다 정통성 -1. 폐세자: 정통성 5↑, 미해결 시 후계 -3. 함흥차사: 놓여 있는 동안 라운드 종료마다 정통성 -1.</p>`)}
+function render(){const s=S;document.body.style.background=s.act==1?"#efe3d9":"#e1e6ef";
+ $("hdr").innerHTML=`<div class="row"><b style="color:${s.act==1?"#f2a3a3":"#a9c4f2"}">${s.act}막</b>${trk("라운드",s.round+"/12","round")}${trk("행동",s.actLeft+(s.free?`(+${s.free}무료)`:""),"act")}${trk("후계",s.후계,"후계")}${trk("민심",s.민심,"민심",s.민심<=2?"danger":"")}${trk("정통성",s.정통성,"정통성",s.정통성<=2?"danger":"")}</div>
+ <div class="row" style="margin-top:3px">${R.map(r=>trk(r,s.res[r],r,"res c"+r)).join("")}</div><div class="row" style="margin-top:3px">${F.map(f=>trk(f,s.fac[f],f,s.fac[f]>=6?"danger":"")).join("")}</div>`;
+ const dk=s.act==1?s.deck1:s.deck2;
+ $("status").innerHTML=`<span class="note">덱 남은 장: ${dk.length}${s.act==1?` · 2막 덱 ${s.deck2.length}`:""}${has("백성의 목소리")?` · 백성의 목소리 — 다음 사건: <b>${dk[0]?C[base(dk[0])].t:"없음"}</b>`:""}${s.tokNext.length?` · 다음 라운드 토큰: ${s.tokNext.map(t=>C[t].t).join(", ")}`:""}${s.v3fail?` · 즉위 조건 +${s.v3fail}`:""}${s.pye?` · 충녕 책봉 비용 -${s.pye}`:""}${s.actMinus?` · 다음 라운드 행동 -${s.actMinus}`:""}${s.pendingAct2?" · <b>다음 라운드 2막</b>":""}</span>`;
+ $("rowc").innerHTML=s.row.map(c=>cardHTML(c,false)).join("")||'<span class="note">없음</span>';
+ $("worsec").innerHTML=s.worse.map(c=>cardHTML(c,true)).join("")||'<span class="note">없음</span>';
+ $("chn").textContent=(s.chars||[]).length;
+ $("chc").innerHTML=(s.chars||[]).map(id=>{const c=CH.find(x=>x.id==id),v=s.fac[c.f],nw=(s.newChars||[]).includes(id);
+  return `<div class="card pc ${nw?"enter":""}" style="--c:#2F6F6A;--t:#ECF5F3;cursor:default" data-ch="${id}"><div class="ttl">${c.t}</div><small><span class="chip" style="background:${FC[c.f]}">${c.f} ${v}</span> ${c.fl}</small>
+  <div class="${v>=3?"on":"off"}"><b>3+</b> ${c.e3}</div><div class="${v>=5?"on":"off"}"><b>5+</b> ${c.e5}</div></div>`}).join("")||'<span class="note">아직 없음</span>';
+ s.newChars=[];
+ $("tabn").textContent=s.tab.length;
+ $("tabc").innerHTML=s.tab.map(id=>{const d=C[base(id)];if(!d.tech)return `<div class="tech" style="background:#fff">${d.t} <small>(기술 없음)</small></div>`;const n=d.tech[0],u=s.used[n];
+  let b="";if(["밀정의 귀","왕에게 곧바로","시험하는 왕"].includes(n)&&!u)b=`<button class="btn" onclick="useTech('${n}')">사용</button>`;
+  return `<div class="tech ${u?"used":""}"><b>${n}</b> <small>(${d.t})</small> ${AUTO[n]?'<span class="chip cany">자동</span>':'<span class="chip cany">수동</span>'}${ONCE[n]?(u?' <span class="chip cany">사용함</span>':' <span class="chip c재정">사용 가능</span>'):""}<br>${d.tech[1]}${b}</div>`}).join("")||'<span class="note">없음</span>';
+ $("log").textContent=s.log.join("\n");
+ const o=s.over;
+ $("bar").innerHTML=o?`<button class="btn pri" onclick="showEnd()">결과 보기</button><button class="btn alt" onclick="openCredits()">크레딧</button><button class="btn alt" onclick="confirmNew()">새 게임</button>`:
+ `<button class="btn" id="bJM" ${s.actLeft<1?"disabled":""} onclick="openJM()">정무</button><button class="btn" onclick="openTrade()">교환</button><button class="btn pri" id="bEnd" onclick="endRound()">라운드 종료</button><button class="btn alt" onclick="undo()" ${U.length?"":"disabled"}>되돌리기</button><button class="btn alt" onclick="document.body.classList.toggle('edit')">✎수정</button><button class="btn alt" onclick="openRules()">규칙</button><button class="btn alt" onclick="openAudio()">🔊</button><button class="btn alt" onclick="openCredits()">크레딧</button><button class="btn alt" onclick="confirmNew()">새 게임</button>`;
+ if(o&&!$("modal").classList.contains("on"))showEnd();}
+function showEnd(){const o=S.over;if(o.lose){M(`<h2>왕조의 몰락</h2><p>민심 또는 정통성이 0이 되었습니다. (라운드 ${S.round})</p><button class="btn pri" onclick="newGame();closeM()">새 게임</button>`);return}
+ if(o.stage=="simon"){const d=C["15"];M(`<div class="card" style="--c:#3A2A12;--t:#F7F1E3;cursor:default"><div class="ttl">보너스 · ${d.t} (1418)</div><p class="flav">${d.f}</p><p>${d.cond}</p></div>
+ <button class="btn pri" id="simY" onclick="simon(true)">사사 — 외척 0, 민심 -2</button><button class="btn alt" id="simN" onclick="simon(false)">두기 — 변화 없음</button>`,true);return}
+ const sc=score();if(!o.snd){o.snd=1;AU.sfx(sc.tot>=25?"win":"lose")}
+ M(`<h2>${sc.g}</h2><p>최종 점수 <b style="font-size:28px">${sc.tot}</b></p><p>후계 ${S.후계} + 민심 ${S.민심} + 정통성 ${S.정통성} + 진열대 ${S.tab.length} + 세력 균형 ${sc.b}</p><button class="btn pri" onclick="newGame();closeM()">새 게임</button>`)}
+function confirmNew(){M(`<h3>새 게임을 시작할까요?</h3><p class="note">덱을 새로 섞습니다 (새 게임 = 새 순서).</p><button class="btn pri" id="newOK" onclick="newGame();closeM()">새 게임 시작</button>`)}
+try{S=JSON.parse(localStorage.getItem("tj_save"));uidc=S.uid||999}catch(e){S=null}
+if(!S||!S.res)newGame();else{S.chars=S.chars||[];render()}
+</script></body></html>
