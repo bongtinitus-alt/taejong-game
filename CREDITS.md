@@ -10,3 +10,6 @@ Changes: re-encoded from OGG to 96 kbps stereo MP3. No other edits.
 
 ## SFX
 All sound effects in sfx/ were synthesized with numpy (sfxgen.py) for this project. No third-party samples.
+
+## 이미지 (v0.4.2)
+img/*.svg (막 표지 3, 빌런 상징 4, 결말 2): 이 프로젝트에서 직접 그린 수묵풍 SVG. 실존 인물의 초상이 아니라 상징(대나무·서책과 칼·활·겹친 인장)입니다. 자유롭게 사용 가능.
