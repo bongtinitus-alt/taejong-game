@@ -81,7 +81,7 @@ input[type=range]{width:120px}
 #facTip{position:fixed;z-index:1100;max-width:280px;background:#fffaf0;color:#2b2118;border:1.5px solid #8a6d2b;border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 4px 14px #0005;animation:tfade .15s}
 #facTip b{color:#8E2323}#facTip small{display:block;color:#6b5a3a;margin-top:3px;font-size:11.5px}
 .glw{border-bottom:1.5px dotted #8a6d2b;cursor:pointer}
-#vBub{position:fixed;left:50%;top:38%;transform:translateX(-50%);z-index:1200;max-width:320px;padding:14px 22px;border-radius:22px;font-family:serif;font-size:19px;font-weight:700;letter-spacing:1px;text-align:center;
+#vBub{position:fixed;left:50%;top:38%;transform:translateX(-50%);z-index:1200;max-width:360px;white-space:nowrap;padding:14px 22px;border-radius:22px;font-family:serif;font-size:19px;font-weight:700;letter-spacing:1px;text-align:center;
  background:radial-gradient(ellipse at 50% 40%,#fffaf0 0%,#f1e6cc 70%,#e3d2a8 100%);color:#2b2118;border:2px solid #2b2118;box-shadow:0 6px 18px #0006,inset 0 0 18px #8a6d2b33;animation:bubIn .35s ease-out}
 #vBub::after{content:"";position:absolute;left:46%;bottom:-11px;border:10px solid transparent;border-top-color:#2b2118;border-bottom:0}
 #vBub.ok{color:#8E2323}#vBub.no{color:#3a3a4a;filter:grayscale(.3)}
@@ -754,5 +754,5 @@ function titleStart(){if(titleHasSave()&&!S.over){M(`<h3>새 게임을 시작할
   $("modal").style.zIndex=1001;return}titleGo()}
 function titleGo(){$("modal").style.zIndex="";hideTitle();INTRO=null;newGame()}
 if(!S||!S.res){newGame();INTRO=null;closeM()}else{S.chars=S.chars||[];render();closeM()}
-showTitle();
+try{showTitle()}catch(e){}
 </script></body></html>
