@@ -469,7 +469,7 @@ function recHL(lose){const h=[];const vn={X1:"정몽주",X2:"정도전",X3:"태�
 function recAdd(lose){const o=S.over;if(o.recId)return o.recId;const sc=lose?null:score();const T=lose?null:titles();
  const why=lose?(o.why||(S.민심<=0?"민심":"정통성")):null;
  const e={id:Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),t:Date.now(),lose:!!lose,sc:lose?score().tot:sc.tot,
-  g:lose?(why=="민심"?"민심 붕괴":(PC().tn||"정통성")+" 상실"):sc.g,title:lose?LOSET(why):T[0][0],pc:S.ch||"bw",hl:recHL(lose),vd:Object.assign({},S.vdone),v:VER};
+  g:lose?(why=="민심"?"민심 붕괴":(PC().tn||"정통성")+" 상실"):sc.g,title:lose?LOSET(why):T[0][0],pc:S.ch||"bw",hl:recHL(lose).map(h=>PC().tn?h.split("정통성").join(PC().tn):h),vd:Object.assign({},S.vdone),v:VER};
  saveRec(recTrim(loadRec().concat([e])));o.recId=e.id;save();return e.id}
 function recRank(id){const w=loadRec().filter(x=>!x.lose).sort((a,b)=>b.sc-a.sc||a.t-b.t);const i=w.findIndex(x=>x.id==id);return i<0?0:i+1}
 function recBadge(){const o=S.over;if(!o||!o.recId||o.lose)return"";const r=recRank(o.recId);if(!r)return"";return`<p id="recRank"><span class="rkb">역대 ${r}위</span>${r==1?'<span class="rkb nr" id="newRec">신기록</span>':""}</p>`}
