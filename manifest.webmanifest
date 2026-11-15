@@ -1,0 +1,19 @@
+{
+  "id": "/taejong-game/",
+  "name": "태종 이방원",
+  "short_name": "태종 이방원",
+  "description": "고려 말에서 왕의 시대까지, 짧은 사건 카드로 나라를 이끄는 1인 전략 게임.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efe7d6",
+  "theme_color": "#efe7d6",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
