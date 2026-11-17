@@ -1,5 +1,5 @@
 /* 태종 이방원 service worker — 캐시 이름은 버전과 함께 바뀌어 새 판이 오면 갱신됩니다. */
-const SWV="v0.9.6";
+const SWV="v0.9.7";
 const CACHE="tj-"+SWV;
 const PRE=[
   "./",
@@ -13,7 +13,11 @@ const PRE=[
   "./img/act1.svg",
   "./img/act2.svg",
   "./img/end.svg",
-  "./img/rain.svg"
+  "./img/rain.svg",
+  "./img/px1.webp",
+  "./img/px2.webp",
+  "./img/px3.webp",
+  "./img/px4.webp"
 ];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting()));
